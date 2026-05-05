@@ -1,11 +1,9 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import axios from 'axios'
 import './SmartPlateInputPage.css'
 
 const dietaryPreferenceCards = [
   {
-    key: 'veg',
+    key: 'vegetarian',
     title: 'Veg',
     description: 'No meat, fish or poultry',
     icon: '🥦',
@@ -26,22 +24,22 @@ const dietaryPreferenceCards = [
     tone: 'gold',
   },
   {
-    key: 'nut-free',
+    key: 'nutAllergy',
     title: 'Nuts',
     description: 'Does not contain nuts',
     icon: '🥜',
     tone: 'rose',
   },
   {
-    key: 'dairy',
-    title: 'Dairy',
-    description: 'Includes milk and dairy',
+    key: 'dairyFree',
+    title: 'Dairy-Free',
+    description: 'No milk or dairy products',
     icon: '🥛',
     tone: 'blue',
   },
   {
-    key: 'gluten',
-    title: 'Gluten',
+    key: 'glutenFree',
+    title: 'Gluten-Free',
     description: 'Gluten friendly',
     icon: '🌾',
     tone: 'lavender',
@@ -58,49 +56,80 @@ const sidebarNavItems = [
 ]
 
 function SmartPlateInputPage() {
-  const navigate = useNavigate()
+  // --- Commit 2: State management ---
+  const [restrictions, setRestrictions] = useState([])          // array of active dietary restriction keys
+  const [proteinTarget, setProteinTarget] = useState(30)        // protein goal in grams
+  const [caloriesLimit, setCaloriesLimit] = useState(700)       // calorie limit in kcal
+  const [diningHall, setDiningHall] = useState('South Campus Dining Hall') // selected dining hall
+  const [error, setError] = useState('')                        // validation error message
 
-  // Required state for the hackathon input flow.
-  const [restrictions, setRestrictions] = useState([])
-  const [proteinTarget, setProteinTarget] = useState(80)
-  const [caloriesLimit, setCaloriesLimit] = useState(700)
-  const [diningHall, setDiningHall] = useState('South Campus Dining Hall')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-
-  const toggleRestriction = (restrictionKey) => {
+  // Toggle a dietary restriction on or off.
+  // Uses functional setState so we always read the latest array.
+  const toggleRestriction = (restriction) => {
     setRestrictions((prev) =>
-      prev.includes(restrictionKey)
-        ? prev.filter((item) => item !== restrictionKey)
-        : [...prev, restrictionKey],
+      prev.includes(restriction)
+        ? prev.filter((item) => item !== restriction)  // remove if already selected
+        : [...prev, restriction],                       // add if not yet selected
     )
   }
 
-  const handleCreatePlate = async (event) => {
-    event.preventDefault()
+  // Update proteinTarget; clamps value between 0 and 200.
+  const handleProteinChange = (event) => {
+    const value = Math.min(200, Math.max(0, Number(event.target.value)))
+    setProteinTarget(value)
+    if (value > 0) setError('')  // clear error when user enters a valid value
+  }
 
-    const payload = {
-      diningHall,
-      restrictions,
+  // Update caloriesLimit; clamps value between 0 and 3000.
+  const handleCaloriesChange = (event) => {
+    const value = Math.min(3000, Math.max(0, Number(event.target.value)))
+    setCaloriesLimit(value)
+    if (value > 0) setError('')  // clear error when user enters a valid value
+  }
+
+  // Update the selected dining hall.
+  const handleDiningHallChange = (event) => {
+    setDiningHall(event.target.value)
+    if (event.target.value) setError('')  // clear error when a hall is chosen
+  }
+
+  // Build the payload object that will be sent to the backend in Commit 3.
+  const buildMealRequestPayload = () => ({
+    diningHall,
+    restrictions,
+    goals: {
       proteinTarget,
       caloriesLimit,
+    },
+  })
+
+  // Validate form before preparing the payload.
+  // Returns true if all fields are valid, false and sets an error message otherwise.
+  const validateForm = () => {
+    if (!diningHall) {
+      setError('Please select a dining hall.')
+      return false
     }
-
-    setError('')
-    setLoading(true)
-
-    try {
-      const response = await axios.post('http://localhost:8000/generate-meal', payload)
-      const data = response.data
-
-      // Route to results page with backend response + original user preferences.
-      navigate('/results', { state: { meal: data, preferences: payload } })
-    } catch (requestError) {
-      setError('We could not generate a plate right now. Please try again in a moment.')
-      console.error('Failed to generate meal:', requestError)
-    } finally {
-      setLoading(false)
+    if (proteinTarget <= 0) {
+      setError('Protein target must be greater than 0.')
+      return false
     }
+    if (caloriesLimit <= 0) {
+      setError('Calorie limit must be greater than 0.')
+      return false
+    }
+    return true
+  }
+
+  // Handle form submit — Commit 2 only logs the payload.
+  // Backend call will be wired in Commit 3.
+  const handleCreatePlate = (event) => {
+    event.preventDefault()  // prevent page reload
+
+    if (!validateForm()) return  // stop if validation fails
+
+    const payload = buildMealRequestPayload()
+    console.log('Prepared payload for backend:', payload)  // Commit 3 will POST this
   }
 
   return (
@@ -207,17 +236,26 @@ function SmartPlateInputPage() {
                       <span>g</span>
                     </div>
                     <input
-                      type="range"
-                      min="20"
-                      max="150"
+                      type="number"
                       value={proteinTarget}
-                      onChange={(event) => setProteinTarget(Number(event.target.value))}
+                      min="0"
+                      max="200"
+                      onChange={handleProteinChange}
                       aria-label="Protein target in grams"
+                      className="sp-number-input"
+                    />
+                    <input
+                      type="range"
+                      min="0"
+                      max="200"
+                      value={proteinTarget}
+                      onChange={handleProteinChange}
+                      aria-label="Protein target slider"
                       className="sp-slider protein"
                     />
                     <div className="sp-goal-scale">
-                      <span>20g</span>
-                      <span>150g+</span>
+                      <span>0g</span>
+                      <span>200g</span>
                     </div>
                   </article>
 
@@ -233,17 +271,26 @@ function SmartPlateInputPage() {
                       <span>kcal</span>
                     </div>
                     <input
-                      type="range"
-                      min="300"
-                      max="1500"
+                      type="number"
                       value={caloriesLimit}
-                      onChange={(event) => setCaloriesLimit(Number(event.target.value))}
+                      min="0"
+                      max="3000"
+                      onChange={handleCaloriesChange}
                       aria-label="Calories limit in kcal"
+                      className="sp-number-input"
+                    />
+                    <input
+                      type="range"
+                      min="0"
+                      max="3000"
+                      value={caloriesLimit}
+                      onChange={handleCaloriesChange}
+                      aria-label="Calories limit slider"
                       className="sp-slider calories"
                     />
                     <div className="sp-goal-scale">
-                      <span>300</span>
-                      <span>1500+</span>
+                      <span>0</span>
+                      <span>3000</span>
                     </div>
                   </article>
 
@@ -259,7 +306,7 @@ function SmartPlateInputPage() {
                       <select
                         id="diningHall"
                         value={diningHall}
-                        onChange={(event) => setDiningHall(event.target.value)}
+                        onChange={handleDiningHallChange}
                       >
                         <option value="South Campus Dining Hall">South Campus Dining Hall</option>
                         <option value="Yahentamitsi">Yahentamitsi</option>
@@ -273,12 +320,13 @@ function SmartPlateInputPage() {
               </section>
 
               <section className="sp-cta-wrap">
-                {error ? <p className="sp-error">{error}</p> : null}
+                {/* Show validation error message if form is invalid */}
+                {error ? <p className="form-error">{error}</p> : null}
 
-                <button type="submit" className="sp-cta-btn" disabled={loading}>
+                <button type="submit" className="sp-cta-btn">
                   <span className="sp-cta-left">
                     <span className="sp-m-badge">M</span>
-                    <span>{loading ? 'CREATING YOUR PLATE...' : 'CREATE MY PLATE'}</span>
+                    <span>CREATE MY PLATE</span>
                   </span>
                   <span aria-hidden="true">→</span>
                 </button>

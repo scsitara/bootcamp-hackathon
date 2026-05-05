@@ -461,13 +461,32 @@
   gap: 0.55rem;
 }
 
-.sp-error {
+/* Validation error shown below the form when fields are incomplete */
+.form-error {
   margin: 0;
   padding: 0.6rem 0.75rem;
   border-radius: 10px;
   border: 1px solid #ffccd3;
   background: #fff2f4;
   color: #9f1024;
+  font-weight: 600;
+}
+
+/* Small number input paired with the range slider */
+.sp-number-input {
+  width: 100%;
+  border: 1px solid #c4b589;
+  border-radius: 10px;
+  padding: 0.5rem 0.65rem;
+  font: inherit;
+  font-size: 1.1rem;
+  background: #ffffff;
+  margin-top: 0.5rem;
+}
+
+.sp-number-input:focus {
+  outline: 2px solid #e21833;
+  border-color: #e21833;
 }
 
 .sp-cta-btn {
