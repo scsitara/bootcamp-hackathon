@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import './SmartPlateInputPage.css'
 
 const dietaryPreferenceCards = [
@@ -56,12 +57,16 @@ const sidebarNavItems = [
 ]
 
 function SmartPlateInputPage() {
-  // --- Commit 2: State management ---
+  // Commit 3: useNavigate used to route to /results after successful API call.
+  const navigate = useNavigate()
+
+  // --- State (Commits 2 + 3) ---
   const [restrictions, setRestrictions] = useState([])          // array of active dietary restriction keys
   const [proteinTarget, setProteinTarget] = useState(30)        // protein goal in grams
   const [caloriesLimit, setCaloriesLimit] = useState(700)       // calorie limit in kcal
   const [diningHall, setDiningHall] = useState('South Campus Dining Hall') // selected dining hall
-  const [error, setError] = useState('')                        // validation error message
+  const [error, setError] = useState('')                        // validation / API error message
+  const [loading, setLoading] = useState(false)                 // true while POST request is in-flight
 
   // Toggle a dietary restriction on or off.
   // Uses functional setState so we always read the latest array.
@@ -103,8 +108,8 @@ function SmartPlateInputPage() {
     },
   })
 
-  // Validate form before preparing the payload.
-  // Returns true if all fields are valid, false and sets an error message otherwise.
+  // Validate form before sending to backend.
+  // Returns true if all fields are valid, sets a helpful error and returns false otherwise.
   const validateForm = () => {
     if (!diningHall) {
       setError('Please select a dining hall.')
@@ -114,22 +119,74 @@ function SmartPlateInputPage() {
       setError('Protein target must be greater than 0.')
       return false
     }
+    if (proteinTarget > 200) {
+      setError('Protein target cannot exceed 200g.')
+      return false
+    }
     if (caloriesLimit <= 0) {
       setError('Calorie limit must be greater than 0.')
       return false
     }
+    if (caloriesLimit > 3000) {
+      setError('Calorie limit cannot exceed 3000 kcal.')
+      return false
+    }
+    setError('')
     return true
   }
 
-  // Handle form submit — Commit 2 only logs the payload.
-  // Backend call will be wired in Commit 3.
-  const handleCreatePlate = (event) => {
-    event.preventDefault()  // prevent page reload
+  // --- Commit 3: API integration ---
+  // Sends the user's preferences to the FastAPI backend and navigates to /results.
+  const handleCreatePlate = async (event) => {
+    event.preventDefault()  // prevent default browser form submission
 
-    if (!validateForm()) return  // stop if validation fails
+    if (!validateForm()) return  // stop early if any field is invalid
 
     const payload = buildMealRequestPayload()
-    console.log('Prepared payload for backend:', payload)  // Commit 3 will POST this
+    console.log('Sending payload to backend:', payload)
+
+    setLoading(true)   // show GENERATING... on button
+    setError('')       // clear any previous error
+
+    try {
+      const response = await fetch('http://localhost:8000/generate-meal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+
+      // If the server returned a non-2xx status, read the error body and throw.
+      if (!response.ok) {
+        let backendMessage = ''
+        try {
+          const errBody = await response.json()
+          backendMessage = errBody.detail || errBody.message || ''
+        } catch {
+          // backend didn't return JSON — that's fine, ignore
+        }
+        throw new Error(
+          backendMessage || `Server responded with status ${response.status}.`,
+        )
+      }
+
+      const data = await response.json()
+      console.log('Backend meal response:', data)
+
+      // Navigate to /results and forward both the meal data and the original preferences.
+      navigate('/results', {
+        state: {
+          mealData: data,
+          preferences: payload,
+        },
+      })
+    } catch (apiError) {
+      console.error('API integration error:', apiError)
+      setError(
+        'We could not generate your meal right now. Please make sure the FastAPI backend is running and try again.',
+      )
+    } finally {
+      setLoading(false)  // always re-enable the button
+    }
   }
 
   return (
@@ -323,10 +380,10 @@ function SmartPlateInputPage() {
                 {/* Show validation error message if form is invalid */}
                 {error ? <p className="form-error">{error}</p> : null}
 
-                <button type="submit" className="sp-cta-btn">
+                <button type="submit" className="sp-cta-btn" disabled={loading}>
                   <span className="sp-cta-left">
                     <span className="sp-m-badge">M</span>
-                    <span>CREATE MY PLATE</span>
+                    <span>{loading ? 'GENERATING...' : 'CREATE MY PLATE'}</span>
                   </span>
                   <span aria-hidden="true">→</span>
                 </button>

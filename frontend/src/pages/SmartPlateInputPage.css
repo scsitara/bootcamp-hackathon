@@ -510,9 +510,10 @@
   background: linear-gradient(90deg, #bf0d27 0%, #df1131 100%);
 }
 
+/* Commit 3: button is disabled while the POST request is in-flight */
 .sp-cta-btn:disabled {
   opacity: 0.7;
-  cursor: wait;
+  cursor: not-allowed;
 }
 
 .sp-cta-left {
