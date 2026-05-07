@@ -48,12 +48,7 @@ const dietaryPreferenceCards = [
 ]
 
 const sidebarNavItems = [
-  { key: 'plan', label: 'Plan My Plate', icon: '🍽️', active: true },
-  { key: 'menu', label: 'Today’s Menu', icon: '📋' },
-  { key: 'generator', label: 'Meal Generator', icon: '✨' },
-  { key: 'analytics', label: 'Nutrition Tips', icon: '📊' },
-  { key: 'halls', label: 'Dining Halls', icon: '🏛️' },
-  { key: 'about', label: 'About', icon: 'ℹ️' },
+  { key: 'plan', label: 'Plan My Plate', icon: '🍽️', active: true }
 ]
 
 function SmartPlateInputPage() {
@@ -192,7 +187,6 @@ function SmartPlateInputPage() {
   return (
     <div className="sp-page-shell">
       <div className="sp-dashboard">
-        <aside className="sp-sidebar" aria-label="Primary navigation">
           <div className="sp-logo-block">
             <div className="sp-logo-m">M</div>
             <div>
@@ -213,15 +207,6 @@ function SmartPlateInputPage() {
               ))}
             </ul>
           </nav>
-
-          <div className="sp-sidebar-promo">
-            <p className="sp-promo-title">FEAR THE TURTLE.</p>
-            <p className="sp-promo-copy">Fuel smart. Eat better. Perform your best.</p>
-            <div className="sp-turtle" aria-hidden="true">
-              🐢
-            </div>
-          </div>
-        </aside>
 
         <main className="sp-main-content">
           <div className="sp-top-row">
@@ -407,6 +392,13 @@ function SmartPlateInputPage() {
                   your perfect plate!
                 </p>
               </div>
+              <div className="sp-sidebar-promo">
+                <p className="sp-promo-title">FEAR THE TURTLE.</p>
+                <p className="sp-promo-copy">Fuel smart. Eat better. Perform your best.</p>
+              <div className="sp-turtle" aria-hidden="true">
+                🐢
+              </div>
+          </div>
             </aside>
           </form>
         </main>
