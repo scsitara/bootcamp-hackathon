@@ -39,10 +39,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Map UI preference keys to actual database tag names
+PREFERENCE_TAG_MAPPING = {
+    "V": "Vegetarian",
+    "VG": "Vegan",
+    "AG": "Avoiding Gluten",
+}
+
 
 class Goals(BaseModel):
     proteinTarget: float
     caloriesLimit: float
+
 
 class MealPreferences(BaseModel):
     diningHall: str | None = None
@@ -51,7 +59,7 @@ class MealPreferences(BaseModel):
     dietary_restrictions: List[str] = []
     protein_target: float | None = None
     calorie_limit: float | None = None
-    dining_hall: str | None = None
+    meal_time: str | None = None
 
 
 def select_best_foods(foods, target_protein, max_calories):
@@ -78,7 +86,7 @@ def select_best_foods(foods, target_protein, max_calories):
 
 
 def normalize_prefs(prefs: MealPreferences):
-    if prefs.goals:
+    if prefs.goals is not None:
         protein_target = prefs.goals.proteinTarget
         calorie_limit = prefs.goals.caloriesLimit
     else:
@@ -86,70 +94,56 @@ def normalize_prefs(prefs: MealPreferences):
         calorie_limit = prefs.calorie_limit
 
     restrictions = prefs.restrictions or prefs.dietary_restrictions
-
-    dining_hall = (
-        prefs.diningHall
-        or prefs.dining_hall
-        or "South Campus Dining Hall"
-    )
+    meal_time = prefs.meal_time or "Lunch"
 
     if protein_target is None or calorie_limit is None:
-        raise HTTPException(
-            status_code=422,
-            detail="Missing protein or calorie goals",
-        )
+        raise HTTPException(status_code=422, detail="Missing protein or calorie goals")
 
-    return (
-        dining_hall,
-        restrictions,
-        float(protein_target),
-        float(calorie_limit),
-    )
+    return meal_time, restrictions, float(protein_target), float(calorie_limit)
+
 
 @app.get("/menu")
 async def fetch_menu():
     items = db.find_by_protein_over(0, _today())
 
     if not items:
-        raise HTTPException(
-            status_code=404,
-            detail="No menu items found in database",
-        )
+        raise HTTPException(status_code=404, detail="No menu items found in database")
 
     return {"items": items}
 
+
 @app.post("/generate-meal")
 async def generate_meal(prefs: MealPreferences):
-    dining_hall, restrictions, protein_target, calorie_limit = normalize_prefs(prefs)
+    meal_time, restrictions, protein_target, calorie_limit = normalize_prefs(prefs)
 
     all_foods = db.find_by_protein_over(-1, _today())
 
     if not all_foods:
-        raise HTTPException(
-            status_code=404,
-            detail="No food items found in database",
-        )
+        raise HTTPException(status_code=404, detail="No food items found in database")
 
-    filtered_foods = [
-        food
-        for food in all_foods
-        if all(
-            tag.lower() in [t.lower() for t in food.get("tags", [])]
-            for tag in restrictions
-        )
+    meal_type_filter = meal_time.lower()
+    foods_by_meal_time = [
+        food for food in all_foods
+        if food.get("meal_type", "").lower() == meal_type_filter
     ]
 
-    if not filtered_foods:
-        raise HTTPException(
-            status_code=404,
-            detail="No foods match these restrictions",
-        )
+    mapped_tags = [PREFERENCE_TAG_MAPPING.get(r, r) for r in restrictions]
 
-    plate, total_p, total_c = select_best_foods(
-        filtered_foods,
-        protein_target,
-        calorie_limit,
-    )
+    if mapped_tags:
+        filtered_foods = [
+            food for food in foods_by_meal_time
+            if all(
+                tag.lower() in [t.lower() for t in food.get("tags", [])]
+                for tag in mapped_tags
+            )
+        ]
+    else:
+        filtered_foods = foods_by_meal_time
+
+    if not filtered_foods:
+        raise HTTPException(status_code=404, detail="No foods match these restrictions and meal time")
+
+    plate, total_p, total_c = select_best_foods(filtered_foods, protein_target, calorie_limit)
 
     return {
         "meal": plate,
@@ -158,7 +152,7 @@ async def generate_meal(prefs: MealPreferences):
             "calories": total_c,
         },
         "meta": {
-            "diningHall": dining_hall,
+            "mealTime": meal_time,
             "usedRestrictions": restrictions,
             "dataSource": "database",
         },

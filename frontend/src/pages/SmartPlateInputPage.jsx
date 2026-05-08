@@ -4,46 +4,25 @@ import './SmartPlateInputPage.css'
 
 const dietaryPreferenceCards = [
   {
-    key: 'vegetarian',
-    title: 'Veg',
-    description: 'No meat, fish or poultry',
+    key: 'V',
+    title: 'V',
+    description: 'Contains no meat, poultry, fish or seafood but may contain eggs or dairy.',
     icon: '🥦',
     tone: 'green',
   },
   {
-    key: 'vegan',
-    title: 'Vegan',
-    description: 'No animal products at all',
+    key: 'VG',
+    title: 'VG',
+    description: 'Contains no animal-based ingredients or by-products.',
     icon: '🌿',
     tone: 'green',
   },
   {
-    key: 'halal',
-    title: 'Halal',
-    description: 'Halal certified ingredients',
-    icon: '🕌',
-    tone: 'gold',
-  },
-  {
-    key: 'nutAllergy',
-    title: 'Nuts',
-    description: 'Does not contain nuts',
-    icon: '🥜',
-    tone: 'rose',
-  },
-  {
-    key: 'dairyFree',
-    title: 'Dairy-Free',
-    description: 'No milk or dairy products',
-    icon: '🥛',
-    tone: 'blue',
-  },
-  {
-    key: 'glutenFree',
-    title: 'Gluten-Free',
-    description: 'Gluten friendly',
+    key: 'AG',
+    title: 'AG',
+    description: 'Menu items made without gluten containing ingredients',
     icon: '🌾',
-    tone: 'lavender',
+    tone: 'blue',
   },
 ]
 
@@ -59,7 +38,7 @@ function SmartPlateInputPage() {
   const [restrictions, setRestrictions] = useState([])          // array of active dietary restriction keys
   const [proteinTarget, setProteinTarget] = useState(30)        // protein goal in grams
   const [caloriesLimit, setCaloriesLimit] = useState(700)       // calorie limit in kcal
-  const [diningHall, setDiningHall] = useState('South Campus Dining Hall') // selected dining hall
+  const [mealTime, setMealTime] = useState('Lunch')             // selected meal time
   const [error, setError] = useState('')                        // validation / API error message
   const [loading, setLoading] = useState(false)                 // true while POST request is in-flight
 
@@ -87,10 +66,10 @@ function SmartPlateInputPage() {
     if (value > 0) setError('')  // clear error when user enters a valid value
   }
 
-  // Update the selected dining hall.
-  const handleDiningHallChange = (event) => {
-    setDiningHall(event.target.value)
-    if (event.target.value) setError('')  // clear error when a hall is chosen
+  // Update the selected meal time.
+  const handleMealTimeChange = (event) => {
+    setMealTime(event.target.value)
+    if (event.target.value) setError('')  // clear error when a time is chosen
   }
 
   // Match these keys EXACTLY to the backend's MealPreferences model
@@ -98,14 +77,14 @@ function SmartPlateInputPage() {
   dietary_restrictions: restrictions, // Matches backend 'dietary_restrictions'
   protein_target: Number(proteinTarget), // Matches backend 'protein_target'
   calorie_limit: Number(caloriesLimit), // Matches backend 'calorie_limit'
-  dining_hall: diningHall, // Matches backend 'dining_hall'
+  meal_time: mealTime, // Matches backend 'meal_time'
 })
 
   // Validate form before sending to backend.
   // Returns true if all fields are valid, sets a helpful error and returns false otherwise.
   const validateForm = () => {
-    if (!diningHall) {
-      setError('Please select a dining hall.')
+    if (!mealTime) {
+      setError('Please select a meal time.')
       return false
     }
     if (proteinTarget <= 0) {
@@ -337,24 +316,23 @@ function SmartPlateInputPage() {
                   <article className="sp-goal-card">
                     <div className="sp-goal-head">
                       <span className="sp-goal-icon black" aria-hidden="true">
-                        🏛️
+                        ⏰
                       </span>
-                      <h3>Dining Hall</h3>
+                      <h3>Meal Time</h3>
                     </div>
-                    <label htmlFor="diningHall" className="sp-select-label">
-                      <span className="sr-only">Select dining hall</span>
+                    <label htmlFor="mealTime" className="sp-select-label">
+                      <span className="sr-only">Select meal time</span>
                       <select
-                        id="diningHall"
-                        value={diningHall}
-                        onChange={handleDiningHallChange}
+                        id="mealTime"
+                        value={mealTime}
+                        onChange={handleMealTimeChange}
                       >
-                        <option value="South Campus Dining Hall">South Campus Dining Hall</option>
-                        <option value="Yahentamitsi">Yahentamitsi</option>
-                        <option value="251 North">251 North</option>
+                        <option value="Breakfast">Breakfast</option>
+                        <option value="Lunch">Lunch</option>
+                        <option value="Dinner">Dinner</option>
+                        <option value="Late Night">Late Night</option>
                       </select>
                     </label>
-                    <p className="sp-open-text">Open now • 7m walk</p>
-                    <p className="sp-hall-list">Yahentamitsi • 251 North</p>
                   </article>
                 </div>
               </section>
