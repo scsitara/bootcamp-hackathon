@@ -23,6 +23,14 @@ def _today() -> str:
     return date.today().strftime("%Y-%m-%d")
 
 
+items_count = db.collection.count_documents({})
+sample_item = db.collection.find_one()
+
+print("-" * 30)
+print(f"DEBUG: Total items in DB: {items_count}")
+print(f"DEBUG: Sample item data: {sample_item}")
+print("-" * 30)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -36,12 +44,10 @@ class Goals(BaseModel):
     proteinTarget: float
     caloriesLimit: float
 
-
 class MealPreferences(BaseModel):
     diningHall: str | None = None
     restrictions: List[str] = []
     goals: Goals | None = None
-
     dietary_restrictions: List[str] = []
     protein_target: float | None = None
     calorie_limit: float | None = None
@@ -111,7 +117,6 @@ async def fetch_menu():
         )
 
     return {"items": items}
-
 
 @app.post("/generate-meal")
 async def generate_meal(prefs: MealPreferences):
