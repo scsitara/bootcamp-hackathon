@@ -9,6 +9,16 @@ db = MenuItemsDB(config)
 
 app = FastAPI()
 
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # This tells the backend to listen to your frontend
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # --- 1. Request Body Model ---
 # Following the "Request Body" slide: BaseModel tells FastAPI the format of incoming data[cite: 2059].
 class MealPreferences(BaseModel):
