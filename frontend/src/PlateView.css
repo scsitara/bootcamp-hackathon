@@ -1,0 +1,43 @@
+.plate-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+}
+
+.dining-plate {
+  width: 350px;
+  height: 350px;
+  background-color: #f8f9fa;
+  border: 10px solid #dee2e6;
+  border-radius: 50%; /* Makes it a circle */
+  position: relative;
+  box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+  margin: 20px 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  overflow: hidden;
+}
+
+.food-item {
+  padding: 15px;
+  text-align: center;
+  background: white;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  margin: 5px;
+  width: 40%;
+  transition: transform 0.2s;
+}
+
+.food-item:hover {
+  transform: scale(1.1); /* Pop effect on hover */
+  border-color: #007bff;
+}
+
+.food-name {
+  font-weight: bold;
+  margin: 0;
+}
