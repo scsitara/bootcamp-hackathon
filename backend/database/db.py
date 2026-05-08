@@ -3,7 +3,7 @@ from datetime import date
 from pymongo import MongoClient
 from pymongo.collection import Collection
 
-from .config import Config
+from config import Config
 
 logger = logging.getLogger(__name__)
 
@@ -69,6 +69,7 @@ class MenuItemsDB:
         query: dict = {"tags": {"$regex": f"^{tag}$", "$options": "i"}}
         if menu_date is not None:
             query["menu_date"] = menu_date
+        print(f"Querying database with: {query}")
         return list(self.collection.find(query, {"_id": 0}))
 
     def find_by_protein_over(self, min_protein: float, menu_date: str | None = None) -> list[dict]:
@@ -80,3 +81,14 @@ class MenuItemsDB:
 
     def close(self) -> None:
         self.client.close()
+
+if __name__ == "__main__":
+    import json
+    config = Config()
+    db = MenuItemsDB(config)
+    try:
+        results = db.find_by_protein_over(-1, menu_date=_today())
+        print(f"Found {len(results)} items with protein > 20g on {_today()}:")
+        print(json.dumps(results, indent=2))
+    finally:
+        db.close()
