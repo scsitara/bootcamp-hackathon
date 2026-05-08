@@ -1,12 +1,9 @@
-from dotenv import load_dotenv
 import os
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 load_dotenv(Path(__file__).parent / ".env")
-
-
-DEFAULT_MONGO_URI = "mongodb+srv://joshiahana2025_db_user:aUVNzRWXqt0Bap5j@cluster0.8kpodxx.mongodb.net/?appName=Cluster0"
-DEFAULT_DB_NAME = "dining_menu"
 
 
 def _clean(value: str) -> str:
@@ -21,8 +18,16 @@ def _clean_db_name(value: str) -> str:
 
 class Config:
     def __init__(self):
-        self.mongo_uri = _clean(os.getenv("mongo_uri", DEFAULT_MONGO_URI))
-        self.db_name = _clean_db_name(os.getenv("db_name", DEFAULT_DB_NAME))
+        mongo_uri = os.getenv("MONGO_URI") or os.getenv("mongo_uri")
+        db_name = os.getenv("DB_NAME") or os.getenv("db_name")
+
+        if not mongo_uri:
+            raise ValueError("MONGO_URI is not set. Add it to backend/database/.env")
+        if not db_name:
+            raise ValueError("DB_NAME is not set. Add it to backend/database/.env")
+
+        self.mongo_uri = _clean(mongo_uri)
+        self.db_name = _clean_db_name(db_name)
 
 
 config = Config()

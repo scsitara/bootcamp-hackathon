@@ -1,5 +1,7 @@
-#Envonment variables
+# Environment variables
 .env
+database/.env
+
 
 # Logs
 logs
