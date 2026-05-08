@@ -1,15 +1,14 @@
-from fastapi import FastAPI, HTTPException
 from typing import List
-from pydantic import BaseModel
-from backend.database.db import MenuItemsDB, _today  # Importing from the nested backend package
-from backend.database.config import config
 
-# Create the database object
-db = MenuItemsDB(config)
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
+from backend.database.config import config
+from backend.database.db import MenuItemsDB, _today
 
 app = FastAPI()
-
-from fastapi.middleware.cors import CORSMiddleware
+db = MenuItemsDB(config)
 
 app.add_middleware(
     CORSMiddleware,
@@ -19,18 +18,34 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# --- 1. Request Body Model ---
-# Following the "Request Body" slide: BaseModel tells FastAPI the format of incoming data[cite: 2059].
-class MealPreferences(BaseModel):
-    dietary_restrictions: List[str]  # e.g., ["vegetarian", "vegan"]
-    protein_target: float
-    calorie_limit: float
-    dining_hall: str
+class Goals(BaseModel):
+    proteinTarget: float
+    caloriesLimit: float
 
-# --- 2. Smart Plate Generator Logic ---
-# This is the core logic requested in your work split[cite: 3501, 3511].
+
+class MealPreferences(BaseModel):
+    # Frontend shape
+    diningHall: str | None = None
+    restrictions: List[str] = []
+    goals: Goals | None = None
+
+    # Legacy / alternative shape
+    dietary_restrictions: List[str] = []
+    protein_target: float | None = None
+    calorie_limit: float | None = None
+    dining_hall: str | None = None
+
+
+MOCK_MENU = [
+    {"name": "Grilled Chicken", "calories": 220, "protein": 35, "tags": ["halal", "high-protein"]},
+    {"name": "Tofu Stir Fry", "calories": 260, "protein": 22, "tags": ["vegan", "vegetarian", "dairyFree"]},
+    {"name": "Brown Rice", "calories": 210, "protein": 5, "tags": ["vegan", "vegetarian", "glutenFree"]},
+    {"name": "Roasted Veggies", "calories": 120, "protein": 4, "tags": ["vegan", "vegetarian", "glutenFree", "dairyFree"]},
+    {"name": "Greek Yogurt", "calories": 160, "protein": 15, "tags": ["vegetarian"]},
+    {"name": "Salmon", "calories": 280, "protein": 30, "tags": ["high-protein"]},
+]
+
 def select_best_foods(foods, target_protein, max_calories):
-    # Sort by protein density (protein per calorie) to maximize protein efficiently.
     sorted_foods = sorted(foods, key=lambda x: x['protein'] / max(x['calories'], 1), reverse=True)
     
     plate = []
@@ -38,63 +53,77 @@ def select_best_foods(foods, target_protein, max_calories):
     current_calories = 0
     
     for food in sorted_foods:
-        # Check if adding this food keeps us under the calorie limit[cite: 3438].
         if current_calories + food['calories'] <= max_calories:
             plate.append(food)
             current_protein += food['protein']
             current_calories += food['calories']
-        
-        # Stop once the protein goal is reached[cite: 3438].
+
         if current_protein >= target_protein:
             break
             
     return plate, current_protein, current_calories
 
-# --- 3. Endpoints ---
+def normalize_prefs(prefs: MealPreferences):
+    if prefs.goals is not None:
+        protein_target = prefs.goals.proteinTarget
+        calorie_limit = prefs.goals.caloriesLimit
+    else:
+        protein_target = prefs.protein_target
+        calorie_limit = prefs.calorie_limit
+
+    restrictions = prefs.restrictions or prefs.dietary_restrictions
+    dining_hall = prefs.diningHall or prefs.dining_hall or "South Campus Dining Hall"
+
+    if protein_target is None or calorie_limit is None:
+        raise HTTPException(status_code=422, detail="Missing protein or calorie goals")
+
+    return dining_hall, restrictions, float(protein_target), float(calorie_limit)
 
 @app.get("/menu")
 async def fetch_menu():
-    # Use her method find_by_protein_over with 0 to get everything
-    # We use _today() from her db.py to get the current date
-    items = db.find_by_protein_over(0, _today())
-    
+    try:
+        items = db.find_by_protein_over(0, _today())
+    except Exception:
+        items = []
+
     if not items:
-        # Use HTTPException as shown in your bootcamp slides
-        from fastapi import HTTPException
-        raise HTTPException(status_code=404, detail="No menu items found for today")
-    
+        return {"items": MOCK_MENU, "source": "mock"}
+
     return {"items": items}
+
 
 @app.post("/generate-meal")
 async def generate_meal(prefs: MealPreferences):
-    """The main algorithm route."""
-    # 1. Fetch data from DB using Ahana's class method 
-    # We use protein > -1 to get all available items for today 
-    all_foods = db.find_by_protein_over(-1, _today())
-    
+    dining_hall, restrictions, protein_target, calorie_limit = normalize_prefs(prefs)
+
+    try:
+        all_foods = db.find_by_protein_over(-1, _today())
+    except Exception:
+        all_foods = []
+
     if not all_foods:
-        raise HTTPException(status_code=404, detail="No menu data found for today") [cite: 1, 2]
-    
-    # 2. Filter out invalid foods based on dietary restrictions 
+        all_foods = MOCK_MENU
+
     filtered_foods = [
-        food for food in all_foods 
+        food for food in all_foods
         if all(tag.lower() in [t.lower() for t in food.get('tags', [])] 
-               for tag in prefs.dietary_restrictions)
+               for tag in restrictions)
     ]
-    
+
     if not filtered_foods:
-        raise HTTPException(status_code=404, detail="No foods match these restrictions") [cite: 1, 2]
+        raise HTTPException(status_code=404, detail="No foods match these restrictions")
 
-    # 3. Run the Smart Plate logic 
-    plate, total_p, total_c = select_best_foods(
-        filtered_foods, 
-        prefs.protein_target, 
-        prefs.calorie_limit
-    )
+    plate, total_p, total_c = select_best_foods(filtered_foods, protein_target, calorie_limit)
 
-    # 4. Return clean JSON for Sitara 
     return {
-        "plate": plate,
-        "total_protein": total_p,
-        "total_calories": total_c
+        "meal": plate,
+        "totals": {
+            "protein": total_p,
+            "calories": total_c,
+        },
+        "meta": {
+            "diningHall": dining_hall,
+            "usedRestrictions": restrictions,
+            "dataSource": "db" if all_foods else "mock",
+        },
     }

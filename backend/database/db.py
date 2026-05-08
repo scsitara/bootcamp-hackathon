@@ -3,7 +3,7 @@ from datetime import date
 from pymongo import MongoClient
 from pymongo.collection import Collection
 
-from config import Config
+from .config import Config
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +16,10 @@ class MenuItemsDB:
     def __init__(self, config: Config) -> None:
         self.client = MongoClient(config.mongo_uri)
         self.collection: Collection = self.client[config.db_name]["menu_items"]
-        self.collection.create_index([("name", 1), ("menu_date", 1)], unique=True)
+        try:
+            self.collection.create_index([("name", 1), ("menu_date", 1)], unique=True)
+        except Exception as exc:
+            logger.warning("Could not create Mongo index at startup: %s", exc)
 
     def insert_items(self, items: list[dict]) -> int:
         """Upsert menu items by (name, menu_date). Returns count of newly inserted docs."""
