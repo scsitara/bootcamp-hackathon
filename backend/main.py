@@ -10,6 +10,14 @@ from backend.database.db import MenuItemsDB, _today
 app = FastAPI()
 db = MenuItemsDB(config)
 
+items_count = db.collection.count_documents({})
+sample_item = db.collection.find_one()
+
+print("-" * 30)
+print(f"DEBUG: Total items in DB: {items_count}")
+print(f"DEBUG: Sample item data: {sample_item}")
+print("-" * 30)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -69,7 +77,6 @@ def normalize_prefs(prefs: MealPreferences):
 @app.get("/menu")
 async def fetch_menu():
     try:
-        # ⭐ Pulls everything regardless of date to ensure your scraped data shows up
         items = db.find_by_protein_over(0, None)
     except Exception:
         items = []
@@ -81,12 +88,10 @@ async def generate_meal(prefs: MealPreferences):
     dining_hall, restrictions, protein_target, calorie_limit = normalize_prefs(prefs)
 
     try:
-        # ⭐ FIXED: Changed _today() to None so it pulls your scraped data from any date
         all_foods = db.find_by_protein_over(-1, None)
     except Exception:
         all_foods = []
 
-    # ⭐ FIXED: Removed the class name "MenuItemsDB" which was causing the crash
     if not all_foods:
         raise HTTPException(status_code=404, detail="The database is currently empty.")
 
