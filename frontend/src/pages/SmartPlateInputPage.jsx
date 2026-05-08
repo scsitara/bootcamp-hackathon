@@ -93,14 +93,12 @@ function SmartPlateInputPage() {
     if (event.target.value) setError('')  // clear error when a hall is chosen
   }
 
-  // Build the payload object that will be sent to the backend in Commit 3.
+  // Match these keys EXACTLY to the backend's MealPreferences model
   const buildMealRequestPayload = () => ({
-    diningHall,
-    restrictions,
-    goals: {
-      proteinTarget,
-      caloriesLimit,
-    },
+    dietary_restrictions: restrictions, // Changed from restrictions
+    protein_target: Number(proteinTarget), // Changed from goals.proteinTarget
+    calorie_limit: Number(caloriesLimit), // Changed from goals.caloriesLimit
+    dining_hall: diningHall, // Changed from diningHall
   })
 
   // Validate form before sending to backend.
