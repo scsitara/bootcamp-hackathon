@@ -12,7 +12,7 @@ db = MenuItemsDB(config)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # This tells the backend to listen to your frontend
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -22,21 +22,17 @@ class Goals(BaseModel):
     proteinTarget: float
     caloriesLimit: float
 
-
 class MealPreferences(BaseModel):
-    # Frontend shape
     diningHall: str | None = None
     restrictions: List[str] = []
     goals: Goals | None = None
-
-    # Legacy / alternative shape
     dietary_restrictions: List[str] = []
     protein_target: float | None = None
     calorie_limit: float | None = None
     dining_hall: str | None = None
 
-
 def select_best_foods(foods, target_protein, max_calories):
+    # Sorts by protein efficiency
     sorted_foods = sorted(foods, key=lambda x: x['protein'] / max(x['calories'], 1), reverse=True)
     
     plate = []
@@ -73,27 +69,26 @@ def normalize_prefs(prefs: MealPreferences):
 @app.get("/menu")
 async def fetch_menu():
     try:
+        # ⭐ Pulls everything regardless of date to ensure your scraped data shows up
         items = db.find_by_protein_over(0, None)
     except Exception:
         items = []
 
-    if not items:
-        return {"items": items, "source": "menu"}
-
     return {"items": items}
-
 
 @app.post("/generate-meal")
 async def generate_meal(prefs: MealPreferences):
     dining_hall, restrictions, protein_target, calorie_limit = normalize_prefs(prefs)
 
     try:
-        all_foods = db.find_by_protein_over(-1, _today())
+        # ⭐ FIXED: Changed _today() to None so it pulls your scraped data from any date
+        all_foods = db.find_by_protein_over(-1, None)
     except Exception:
         all_foods = []
 
+    # ⭐ FIXED: Removed the class name "MenuItemsDB" which was causing the crash
     if not all_foods:
-        all_foods = MenuItemsDB
+        raise HTTPException(status_code=404, detail="The database is currently empty.")
 
     filtered_foods = [
         food for food in all_foods
@@ -115,6 +110,6 @@ async def generate_meal(prefs: MealPreferences):
         "meta": {
             "diningHall": dining_hall,
             "usedRestrictions": restrictions,
-            "dataSource": "db" if all_foods else "mock",
+            "dataSource": "live_mongodb",
         },
     }
