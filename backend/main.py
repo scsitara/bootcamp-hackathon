@@ -36,15 +36,6 @@ class MealPreferences(BaseModel):
     dining_hall: str | None = None
 
 
-MOCK_MENU = [
-    {"name": "Grilled Chicken", "calories": 220, "protein": 35, "tags": ["halal", "high-protein"]},
-    {"name": "Tofu Stir Fry", "calories": 260, "protein": 22, "tags": ["vegan", "vegetarian", "dairyFree"]},
-    {"name": "Brown Rice", "calories": 210, "protein": 5, "tags": ["vegan", "vegetarian", "glutenFree"]},
-    {"name": "Roasted Veggies", "calories": 120, "protein": 4, "tags": ["vegan", "vegetarian", "glutenFree", "dairyFree"]},
-    {"name": "Greek Yogurt", "calories": 160, "protein": 15, "tags": ["vegetarian"]},
-    {"name": "Salmon", "calories": 280, "protein": 30, "tags": ["high-protein"]},
-]
-
 def select_best_foods(foods, target_protein, max_calories):
     sorted_foods = sorted(foods, key=lambda x: x['protein'] / max(x['calories'], 1), reverse=True)
     
@@ -82,12 +73,12 @@ def normalize_prefs(prefs: MealPreferences):
 @app.get("/menu")
 async def fetch_menu():
     try:
-        items = db.find_by_protein_over(0, _today())
+        items = db.find_by_protein_over(0, None)
     except Exception:
         items = []
 
     if not items:
-        return {"items": MOCK_MENU, "source": "mock"}
+        return {"items": items, "source": "menu"}
 
     return {"items": items}
 
@@ -102,7 +93,7 @@ async def generate_meal(prefs: MealPreferences):
         all_foods = []
 
     if not all_foods:
-        all_foods = MOCK_MENU
+        all_foods = MenuItemsDB
 
     filtered_foods = [
         food for food in all_foods
