@@ -95,11 +95,11 @@ function SmartPlateInputPage() {
 
   // Match these keys EXACTLY to the backend's MealPreferences model
   const buildMealRequestPayload = () => ({
-    dietary_restrictions: restrictions, // Changed from restrictions
-    protein_target: Number(proteinTarget), // Changed from goals.proteinTarget
-    calorie_limit: Number(caloriesLimit), // Changed from goals.caloriesLimit
-    dining_hall: diningHall, // Changed from diningHall
-  })
+  dietary_restrictions: restrictions, // Matches backend 'dietary_restrictions'
+  protein_target: Number(proteinTarget), // Matches backend 'protein_target'
+  calorie_limit: Number(caloriesLimit), // Matches backend 'calorie_limit'
+  dining_hall: diningHall, // Matches backend 'dining_hall'
+})
 
   // Validate form before sending to backend.
   // Returns true if all fields are valid, sets a helpful error and returns false otherwise.
